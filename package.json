@@ -1,6 +1,7 @@
 {
   "name": "bitburner-typescript-template",
   "version": "2.0.0",
+  "type": "module",
   "scripts": {
     "watch:transpile": "tsc -w --preserveWatchOutput",
     "watch:local": "node build/watch.js",

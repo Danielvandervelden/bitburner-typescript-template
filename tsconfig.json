@@ -1,6 +1,6 @@
 {
-  "include": ["NetscriptDefinitions.d.ts", "src/**/*"],
-  "exclude": ["src/lib/react.ts"],
+  "include": ["src/**/*"],
+  "exclude": ["src/lib/react.ts", "NetscriptDefinitions.d.ts"],
   "compilerOptions": {
     "module": "esnext",
     "target": "esnext",
