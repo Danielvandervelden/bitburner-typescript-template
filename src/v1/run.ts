@@ -13,7 +13,11 @@ export async function main(ns: NS) {
 
     // Check if script exists on target host first
     if (!ns.fileExists(scriptPath, host)) {
-      ns.tprint(`[${host}] Script ${scriptPath} does not exist on server, skipping`);
+      return;
+    }
+
+    ns.print(`[${host}] Checking if script is already running`);
+    if (ns.isRunning(scriptPath, host)) {
       return;
     }
 
@@ -29,6 +33,10 @@ export async function main(ns: NS) {
     const availableRam = maxRam - usedRam;
     const threads = Math.floor(availableRam / scriptRam);
 
+    if (threads <= 0) {
+      return;
+    }
+
     ns.print(`[${host}] Script path: ${scriptPath}, RAM: ${scriptRam}, Max RAM: ${maxRam}, Used RAM: ${usedRam}, Available RAM: ${availableRam}, Threads: ${threads}`);
 
     if (isNaN(threads) || !isFinite(threads)) {
@@ -39,12 +47,6 @@ export async function main(ns: NS) {
     ns.print(`[${host}] Checking if threads is valid: ${threads}`);
     if (threads < 1 || threads > 99999999999) {
       ns.tprint(`[${host}] ERROR: Invalid thread count: ${threads}`);
-      return;
-    }
-
-    ns.print(`[${host}] Checking if script is already running`);
-    if (ns.isRunning(scriptPath, host)) {
-      ns.tprint(`[${host}] Script is already running, skipping`);
       return;
     }
 

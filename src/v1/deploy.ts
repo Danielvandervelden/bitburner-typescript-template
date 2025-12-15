@@ -27,6 +27,16 @@ export function main(ns: NS) {
     ns.write(targetHackPath, content, 'w');
   }
 
+  const sourceConstantsPath = scriptWithVersion('v1-constants.js');
+  const targetConstantsPath = 'v1-constants.js';
+
+  // Create temp file on home root if we need to deploy constants
+  const needsConstantsDeploy = hosts.some(host => !ns.fileExists(targetConstantsPath, host));
+  if (needsConstantsDeploy) {
+    const content = ns.read(sourceConstantsPath);
+    ns.write(targetConstantsPath, content, 'w');
+  }
+
   hosts.forEach(host => {
     if (!ns.fileExists(targetHelperPath, host)) {
       ns.tprint(`Helper functions (${HELPER_FUNCTIONS}) doesn't exist on ${host}, copying now...`)
@@ -37,6 +47,11 @@ export function main(ns: NS) {
       ns.tprint(`Hack script (${HACK_SCRIPT}) doesn't exist on ${host}, copying now...`)
       ns.scp(targetHackPath, host, 'home');
     }
+
+    if (!ns.fileExists(targetConstantsPath, host)) {
+      ns.tprint(`Constants file (v1-constants.js) doesn't exist on ${host}, copying now...`)
+      ns.scp(targetConstantsPath, host, 'home');
+    }
   })
 
   // Clean up temp files on home
@@ -45,5 +60,8 @@ export function main(ns: NS) {
   }
   if (needsHackDeploy) {
     ns.rm(targetHackPath, 'home');
+  }
+  if (needsConstantsDeploy) {
+    ns.rm(targetConstantsPath, 'home');
   }
 }

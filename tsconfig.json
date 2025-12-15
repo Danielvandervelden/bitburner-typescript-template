@@ -1,6 +1,6 @@
 {
-  "include": ["src/**/*"],
-  "exclude": ["src/lib/react.ts", "NetscriptDefinitions.d.ts"],
+  "include": ["NetscriptDefinitions.d.ts", "src/**/*"],
+  "exclude": ["src/lib/react.ts"],
   "compilerOptions": {
     "module": "esnext",
     "target": "esnext",
@@ -9,7 +9,6 @@
     "noImplicitThis": true,
     "esModuleInterop": true,
     "inlineSourceMap": true,
-    "inlineSources": true,
     "strict": true,
     "rootDir": "src/",
     "outDir": "dist/",
