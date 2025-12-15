@@ -3,8 +3,6 @@ import { HACK_SCRIPT } from './v1-constants.js';
 import { NS } from '@ns';
 
 export async function main(ns: NS) {
-  ns.tprint('Running run script');
-
   const hosts = getAllAvailableServersWithRootAccess(ns);
 
   hosts.forEach(host => {

@@ -11,31 +11,15 @@ export async function main(ns: NS) {
   while (true) {
     const purchasedServers = ns.getPurchasedServers();
 
-    if (ns.getPurchasedServerLimit() === purchasedServers.length && ns.getPurchasedServerCost(size * 4) * 1 < ns.getServerMoneyAvailable("home")) {
+    if (ns.getPurchasedServerLimit() === purchasedServers.length && ns.getPurchasedServerCost(size * 3) * 1 < ns.getServerMoneyAvailable("home")) {
       removeServerWithLowestRam();
     }
 
     if (ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(size)) {
 
-      let hostname = ns.purchaseServer(`serb0r-${i}-${size}gb`, size);
+      let hostname = ns.purchaseServer(`serb0r-${size}gb`, size);
 
-      if (hostname) {
-        copyScript(ns, SERVER_HACK_SCRIPT, hostname);
-        copyScript(ns, HELPER_FUNCTIONS, hostname);
-
-        ns.tprint(`Hostname we're going for: ${hostname}`);
-        ns.tprint(`Script RAM: ${ns.getScriptRam(scriptWithVersion(SERVER_HACK_SCRIPT), hostname)}`);
-        ns.tprint(`Size of the server: ${size}gb`);
-
-        let totalThreadsAvailable = Math.floor(size / ns.getScriptRam(scriptWithVersion(SERVER_HACK_SCRIPT), hostname));
-
-        if (totalThreadsAvailable < Infinity && totalThreadsAvailable > 0) {
-          ns.exec(scriptWithVersion(SERVER_HACK_SCRIPT), hostname, totalThreadsAvailable);
-        } else {
-          ns.tprint(`${hostname} has ${totalThreadsAvailable} threads available?`);
-        }
-        ++i;
-      }
+      ns.tprint(`Bought new server: ${hostname}`);
     }
 
     await ns.sleep(10);

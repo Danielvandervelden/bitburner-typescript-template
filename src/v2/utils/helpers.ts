@@ -62,6 +62,14 @@ export function getMaximumAvailableThreads(ns: NS, host: string, scriptName: str
 
   ns.tprint('Max RAM: ', maxRam);
   ns.tprint('script cost: ', scriptCost);
-  
+
   return Math.floor(maxRam / scriptCost);
+}
+
+export function runScriptIfNotAlreadyRunning(ns: NS, scriptName: string, host: string = 'home') {
+  if (!ns.isRunning(scriptName, host)) {
+    ns.run(scriptName);
+  } else {
+    ns.tprint(`${scriptName} script is already running`)
+  }
 }

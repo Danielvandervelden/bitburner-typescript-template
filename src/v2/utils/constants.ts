@@ -1,10 +1,16 @@
-export const DEPLOY_HACKED_SCRIPT = '/v2/scripts/deploy/deploy-to-hacked-servers.ts';
-export const DEPLOY_PURCHASED_SCRIPT = '/v2/scripts/deploy/deploy-to-purchased-servers.ts';
+export const DEPLOY_HACKED_SCRIPT = '/v2/scripts/deploy/deploy-to-hacked-servers.js';
+export const DEPLOY_PURCHASED_SCRIPT = '/v2/scripts/deploy/deploy-to-purchased-servers.js';
 
-export const HACKING_LOOP = '/v2/scripts/hacking/__main-loop__.ts';
-export const HACK_SCRIPT = '/v2/scripts/hacking/hack.ts';
-export const WEAKEN_SCRIPT = '/v2/scripts/hacking/weaken.ts';
-export const GROW_SCRIPT = '/v2/scripts/hacking/grow.ts';
-export const CHECK_HACK_SCRIPT = '/v2/scripts/hacking/check-new-available-servers-to-hack.js';
+export const HACK_SCRIPT_NAME = 'hack.js';
+export const WEAKEN_SCRIPT_NAME = 'weaken.js';
+export const GROW_SCRIPT_NAME = 'grow.js';
 
-export const HELPERS = '/v2/scripts/utils/helpers.ts';
+export const HACKING_LOOP = '/v2/scripts/hacking/main-loop.js';
+export const HACK_SCRIPT = `/v2/scripts/hacking/bits/${HACK_SCRIPT_NAME}`;
+export const WEAKEN_SCRIPT = `/v2/scripts/hacking/bits/${WEAKEN_SCRIPT_NAME}`;
+export const GROW_SCRIPT = `/v2/scripts/hacking/bits/${GROW_SCRIPT_NAME}`;
+export const NUKE_SCRIPT = '/v2/scripts/nuke.js';
+export const WORKER_SCRIPT = '/v2/scripts/hacking/worker.js';
+
+
+export const HELPERS = '/v2/scripts/utils/helpers.js';

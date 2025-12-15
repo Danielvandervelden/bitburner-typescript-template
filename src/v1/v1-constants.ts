@@ -8,3 +8,4 @@ export const HACK_SCRIPT = 'weaken-grow-hack.js';
 
 export const SERVER_HACK_SCRIPT = 'server-weaken-grow-hack.js';
 export const HELPER_FUNCTIONS = 'helpers.js';
+export const CONSTANTS = 'v1-constants.js';
