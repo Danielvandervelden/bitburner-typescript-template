@@ -1,6 +1,7 @@
 import { NS } from '@ns';
 import { SERVER_HACK_SCRIPT, HELPER_FUNCTIONS } from './v1-constants.js';
 import { copyScript, scriptWithVersion } from './helpers.js';
+import { createRandomIdentifier } from '/v2/utils/helpers.js';
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
@@ -17,7 +18,9 @@ export async function main(ns: NS) {
 
     if (ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(size)) {
 
-      let hostname = ns.purchaseServer(`serb0r-${size}gb`, size);
+      const randomIdentifier = createRandomIdentifier();
+
+      let hostname = ns.purchaseServer(`serb0r-${randomIdentifier}-${size}gb`, size);
 
       ns.tprint(`Bought new server: ${hostname}`);
     }
