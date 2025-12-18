@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { getAllAvailableServers } from "/v2/utils/helpers";
+import { copyNestedFilesToRootOfHost, getAllAvailableServers } from "/v2/utils/helpers";
 
 type HackFunctions = NS['brutessh'] | NS['ftpcrack'] | NS['relaysmtp'] | NS['httpworm'] | NS['sqlinject']
 
@@ -83,7 +83,7 @@ export async function main(ns: NS) {
 
                 ns.tprint(`Nuking ${host}!`)
                 ns.nuke(host);
-
+                copyNestedFilesToRootOfHost(ns, 'home', '/v2/scripts/hacking/bits', [host]);
             }
         })
 

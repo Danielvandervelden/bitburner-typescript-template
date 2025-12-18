@@ -1,89 +1,62 @@
 import { NS } from "@ns";
-import { getAllAvailableServersWithRootAccessMinusHackingLevel, getAllPurchasedServers } from "/v2/utils/helpers";
+import { getAllAvailableServersWithRootAccessMinusHackingLevel } from "/v2/utils/helpers";
 import { SERVER_WORKER_SCRIPT } from "/v2/utils/constants";
 
-interface SpawnedServerWorker {
-    target: string;
-    count: number;
+interface Processes {
+    pid: number;
+    host: string;
 }
 
 export async function main(ns: NS) {
-
-    const hackedServers = getAllAvailableServersWithRootAccessMinusHackingLevel(ns);
-
-    const sortedHackedServersByHighestMaxMoney = hackedServers.filter((server) => {
-        return ns.getServerMaxMoney(server) !== 0;
-    }).sort((a, b) => {
-        const maxMoneyServerA = ns.getServerMaxMoney(a);
-        const maxMoneyServerB = ns.getServerMaxMoney(b);
-
-        // ns.tprint(`Server A: ${a} -> ${maxMoneyServerA}`)
-        // ns.tprint(`Server B: ${b} -> ${maxMoneyServerB}`)
-
-        return maxMoneyServerB - maxMoneyServerA;
-    })
-
-    // ns.tprint(hackedServers);
-    // ns.tprint(sortedHackedServersByHighestMaxMoney);
-
-    const spawnedServerWorkers: SpawnedServerWorker[] = sortedHackedServersByHighestMaxMoney.map((server) => ({
-        target: server,
-        count: 0
-    }))
+    let lastServerToBeHacked = 0;
 
     while (true) {
-        const hosts = getAllPurchasedServers(ns);
+        const hosts = ns.getPurchasedServers();
+        const hackedServers = getAllAvailableServersWithRootAccessMinusHackingLevel(ns);
 
+        if (hackedServers.length === 0) {
+            ns.tprint(`Hacked servers array is empty: ${hackedServers}, guess we continue in the next iteration? Is weird though.`);
+            await ns.sleep(2000);
+            continue;
+        }
+
+        if (lastServerToBeHacked >= hackedServers.length) {
+            ns.tprint(`The last server to be hacked index (${lastServerToBeHacked} is bigger or equal to the hackedServers.length (${hackedServers.length}). Setting lastServerToBeHacked to 0)`);
+            lastServerToBeHacked = 0;
+        }
 
         for (let host of hosts) {
+            const serverToHack = hackedServers[lastServerToBeHacked]
 
-            const serverToHack = spawnedServerWorkers.reduce((previousServerWorker, currentServerWorker) => {
-                if (previousServerWorker.count === Infinity) {
-                    return currentServerWorker;
-                }
-
-                if (currentServerWorker.count < previousServerWorker.count) {
-                    return currentServerWorker;
-                }
-
-                return previousServerWorker
-            }, { target: '', count: Infinity } as SpawnedServerWorker);
-
-            const workerRunningOnHome = (() => {
-                return hackedServers.some((hackedServer) => ns.isRunning(SERVER_WORKER_SCRIPT, 'home', host, hackedServer))
-            })();
-
-            if (workerRunningOnHome) {
-                // ns.tprint(`Server worker for ${host} to hack ${serverToHack.target} already running`);
+            if (!serverToHack) {
+                ns.tprint(`No server to hack available for ${host} (lastServerToBeHacked: ${lastServerToBeHacked}, hackedServers.length: ${hackedServers.length})`);
                 continue;
             }
 
-            const serverWorker = spawnedServerWorkers.find((serverWorker) => serverToHack.target === serverWorker.target)
+            const hostAlreadyHasWorker = ns.ps("home").some(p =>
+                p.filename.endsWith("v2/scripts/hacking/server-worker.js") &&
+                p.args[0] === host
+            );
 
-            if (!serverWorker) {
-                ns.tprint(`Something bad happened, couldn't find server worker: ${serverToHack}`);
-                return;
+            if (hostAlreadyHasWorker) {
+                continue;
             }
 
-            serverWorker.count++
+            // ns.tprint(`Starting server worker for ${host} hacking: ${serverToHack}`);
+            const pid = ns.exec(SERVER_WORKER_SCRIPT, 'home', 1, host, serverToHack);
 
-            // ns.tprint(`Starting server worker for ${host} hacking: ${serverToHack.target}`);
-            const pid = ns.exec(SERVER_WORKER_SCRIPT, 'home', 1, host, serverToHack.target);
-
+            if (lastServerToBeHacked < hackedServers.length - 1) {
+                lastServerToBeHacked++
+            } else {
+                lastServerToBeHacked = 0;
+            }
 
             if (!pid) {
-                ns.tprint(`Something went wrong, could spawn server worker for ${host}`)
+                ns.tprint(`Something went wrong, couldn't spawn server worker for ${host} hacking ${serverToHack}, continuing to next host`)
+                continue;
             }
         }
 
-        // ns.tprintRaw(`
-        //     Spawned server worker status:
-        //         ${JSON.stringify(spawnedServerWorkers, null, 2)}    
-
-        //     Created server worker for server:
-        //         ${createdWorkerForServer}
-        // `)
-
-        await ns.sleep(5000);
+        await ns.sleep(2000);
     }
 }

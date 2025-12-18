@@ -8,7 +8,11 @@ export async function main(ns: NS) {
     while (true) {
         const hosts = getAllAvailableServersWithRootAccess(ns);
 
-        for (let host of hosts) {
+        const filteredHosts = hosts.filter((host) => {
+            return ns.getServerMaxMoney(host) !== 0;
+        })
+
+        for (let host of filteredHosts) {
             const workerRunningOnHome = ns.isRunning(WORKER_SCRIPT, 'home', host);
 
             if (workerRunningOnHome) {

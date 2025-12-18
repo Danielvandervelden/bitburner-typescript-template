@@ -8,6 +8,7 @@ export const GROW_SCRIPT_NAME = 'grow.js';
 
 export const HACKING_LOOP = '/v2/scripts/hacking/main-loop.js';
 export const SERVER_HACKING_LOOP = '/v2/scripts/hacking/servers-main-loop.js';
+export const HOME_HACKING = '/v2/scripts/hacking/home-hacking-loop.js';
 export const HACK_SCRIPT = `/v2/scripts/hacking/bits/${HACK_SCRIPT_NAME}`;
 export const WEAKEN_SCRIPT = `/v2/scripts/hacking/bits/${WEAKEN_SCRIPT_NAME}`;
 export const GROW_SCRIPT = `/v2/scripts/hacking/bits/${GROW_SCRIPT_NAME}`;
