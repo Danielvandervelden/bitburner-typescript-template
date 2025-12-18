@@ -14,7 +14,7 @@ export async function main(ns: NS) {
     runScriptIfNotAlreadyRunning(ns, HACKING_LOOP);
     await ns.sleep(200);
     runScriptIfNotAlreadyRunning(ns, SERVER_HACKING_LOOP);
-    // await ns.sleep(1000);
-    // runScriptIfNotAlreadyRunning(ns, HOME_HACKING);
+    await ns.sleep(1000);
+    runScriptIfNotAlreadyRunning(ns, HOME_HACKING);
 
 }

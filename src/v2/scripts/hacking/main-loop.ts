@@ -1,10 +1,8 @@
 import { NS } from "@ns";
-import { getAllAvailableServersWithRootAccess } from "/v1/helpers";
+import { getAllAvailableServersWithRootAccess } from "../../utils/helpers";
 import { WORKER_SCRIPT } from "/v2/utils/constants";
 
 export async function main(ns: NS) {
-
-
     while (true) {
         const hosts = getAllAvailableServersWithRootAccess(ns);
 
@@ -20,8 +18,7 @@ export async function main(ns: NS) {
                 continue;
             }
 
-            // ns.tprint(`RUNNING FOR: ${host}`);
-            // ns.tprint(`Starting worker for ${host}`);
+
             const pid = ns.exec(WORKER_SCRIPT, 'home', 1, host);
 
 

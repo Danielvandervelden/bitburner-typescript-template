@@ -5,7 +5,7 @@ import { GROW_SCRIPT, HACK_SCRIPT, WEAKEN_SCRIPT } from "/v2/utils/constants";
 export async function main(ns: NS) {
     const maxHomeRAM = ns.getServerMaxRam('home');
     const usedHomeRAM = ns.getServerUsedRam('home');
-    const availableRAM = (maxHomeRAM - usedHomeRAM) * 0.7;
+    const availableRAM = (maxHomeRAM - usedHomeRAM) * 0.9;
 
     // ns.tprint(`Available RAM on home: ${availableRAM}GB`);
 
