@@ -2,11 +2,6 @@ import { NS } from "@ns";
 import { getAllAvailableServersWithRootAccessMinusHackingLevel } from "/v2/utils/helpers";
 import { SERVER_WORKER_SCRIPT } from "/v2/utils/constants";
 
-interface Processes {
-    pid: number;
-    host: string;
-}
-
 export async function main(ns: NS) {
     let lastServerToBeHacked = 0;
 
