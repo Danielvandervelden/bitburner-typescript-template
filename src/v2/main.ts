@@ -7,13 +7,13 @@ export async function main(ns: NS) {
     await ns.sleep(200);
     runScriptIfNotAlreadyRunning(ns, DEPLOY_HACKED_SCRIPT);
     await ns.sleep(200);
-    runScriptIfNotAlreadyRunning(ns, DEPLOY_PURCHASED_SCRIPT);
+    // runScriptIfNotAlreadyRunning(ns, DEPLOY_PURCHASED_SCRIPT);
     await ns.sleep(200);
-    runScriptIfNotAlreadyRunning(ns, PURCHASE_SERVER);
+    // runScriptIfNotAlreadyRunning(ns, PURCHASE_SERVER);
     await ns.sleep(200);
     runScriptIfNotAlreadyRunning(ns, HACKING_LOOP);
-    await ns.sleep(200);
-    runScriptIfNotAlreadyRunning(ns, SERVER_HACKING_LOOP);
-    await ns.sleep(1000);
-    runScriptIfNotAlreadyRunning(ns, HOME_HACKING);
+    // await ns.sleep(200);
+    // runScriptIfNotAlreadyRunning(ns, SERVER_HACKING_LOOP);
+    // await ns.sleep(1000);
+    // runScriptIfNotAlreadyRunning(ns, HOME_HACKING);
 }
