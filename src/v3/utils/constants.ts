@@ -11,9 +11,14 @@ export const HACK_SCRIPT = `/v3/hacking/${HACK_SCRIPT_NAME}`;
 export const WEAKEN_SCRIPT = `/v3/hacking/${WEAKEN_SCRIPT_NAME}`;
 export const GROW_SCRIPT = `/v3/hacking/${GROW_SCRIPT_NAME}`;
 
+export const LOOP_MODE = `/v3/modes/loop-mode.js`;
+export const BATCH_MODE = `/v3/modes/batch-mode.js`;
+
 export const CONTROLLER = "/v3/controller.js";
 
 export const PURCHASE_SERVERS = "/v3/purchase.js";
 
-export const HACK_PERCENTAGE = 0.05;
-export const GROWTH_TARGET = 0.98;
+export const HACK_PERCENTAGE = 0.07;
+export const GROWTH_TARGET = 0.96;
+
+export const HACK_MODE: "loop" | "batch" = "batch";
