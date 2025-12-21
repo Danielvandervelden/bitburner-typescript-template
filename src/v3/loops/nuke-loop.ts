@@ -47,20 +47,29 @@ export async function main(ns: NS) {
     while (true) {
         const hosts = getAllAvailableServers(ns);
 
-        /** Check if we actually have all the porthacks, if not we check if we have enough money to buy them */
-        for (const hack of portsHackArray(ns)) {
-            if (
-                !ns.fileExists(hack.name, "home") &&
-                ns.singularity.getDarkwebProgramCost(hack.name) <
-                    ns.getServerMoneyAvailable("home")
-            ) {
-                const result = ns.singularity.purchaseProgram(hack.name);
+        if (ns.hasTorRouter()) {
+            /** Check if we actually have all the porthacks, if not we check if we have enough money to buy them */
+            for (const hack of portsHackArray(ns)) {
+                if (
+                    !ns.fileExists(hack.name, "home") &&
+                    ns.singularity.getDarkwebProgramCost(hack.name) <
+                        ns.getServerMoneyAvailable("home")
+                ) {
+                    const result = ns.singularity.purchaseProgram(hack.name);
 
-                if (!result) {
-                    ns.tprint(`
+                    if (!result) {
+                        ns.tprint(`
                   We tried purchasing ${hack.name}, but something went wrong... 
                 `);
+                    }
                 }
+            }
+        } else {
+            if (
+                ns.singularity.getDarkwebProgramCost("Tor Router") <
+                ns.getServerMoneyAvailable("home")
+            ) {
+                ns.singularity.purchaseTor();
             }
         }
 

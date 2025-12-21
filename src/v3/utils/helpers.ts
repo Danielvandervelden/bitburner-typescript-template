@@ -124,9 +124,6 @@ export function getMaximumAvailableThreads(ns: NS, host: string, scriptName: str
     const maxRam = ns.getServerMaxRam(host) - ns.getServerUsedRam(host);
     const scriptCost = ns.getScriptRam(scriptName);
 
-    ns.tprint("Max RAM: ", maxRam);
-    ns.tprint("script cost: ", scriptCost);
-
     return Math.floor(maxRam / scriptCost);
 }
 
@@ -425,8 +422,15 @@ export async function determineWorkerExecution(ns: NS, options: WorkerExecutionO
 }
 
 type ProfitMode = "loop" | "batch";
+interface BestServer {
+    hostName: string;
+    bestScore: number;
+}
 
-export const getMostProfitableServerToHack = (ns: NS, mode: ProfitMode): string => {
+export const getMostProfitableServersToHack = (
+    ns: NS,
+    mode: ProfitMode
+): BestServer[] => {
     const targets = getAllAvailableServersWithRootAccess(ns).filter((host) => {
         const maxMoney = ns.getServerMaxMoney(host);
         const chance = ns.hackAnalyzeChance(host);
@@ -435,8 +439,11 @@ export const getMostProfitableServerToHack = (ns: NS, mode: ProfitMode): string 
         return maxMoney > 0 && chance > 0.9 && reqLvl < ns.getHackingLevel();
     });
 
-    let bestName = "";
-    let bestScore = 0;
+    if (!targets.length) {
+        return [];
+    }
+
+    const bestServers: BestServer[] = [];
 
     // Cache script RAM once (it’s constant)
     const hackRam = ns.getScriptRam(HACK_SCRIPT);
@@ -497,26 +504,24 @@ export const getMostProfitableServerToHack = (ns: NS, mode: ProfitMode): string 
             expectedMoneyPerCycle / cycleTimeSeconds / ramCostPerCycle;
 
         // Optional debug: uncomment when needed
-        /*
-    ns.tprint(`
-      Information for ${host} (${mode})
-      ------
-      Money per second per GB: ${moneyPerSecondPerGb}
-      Max money: ${maxMoney}
-      Current money: ${currentMoney}
-      Hack chance: ${hackChance}
-      Hack %/thread: ${hackFracPerThread}
-      Threads (H/G/W): ${hackThreads}/${growThreads}/${weakenThreads}
-      Cycle time: ${cycleTimeSeconds}s
-      RAM/cycle: ${ramCostPerCycle}GB
-    `);
-    */
 
-        if (moneyPerSecondPerGb > bestScore) {
-            bestScore = moneyPerSecondPerGb;
-            bestName = host;
-        }
+        // ns.tprint(`
+        //   Information for ${host} (${mode})
+        //   ------
+        //   Money per second per GB: ${moneyPerSecondPerGb}
+        //   Max money: ${maxMoney}
+        //   Current money: ${currentMoney}
+        //   Hack chance: ${hackChance}
+        //   Hack %/thread: ${hackFracPerThread}
+        //   Threads (H/G/W): ${hackThreads}/${growThreads}/${weakenThreads}
+        //   Cycle time: ${cycleTimeSeconds}s
+        //   RAM/cycle: ${ramCostPerCycle}GB
+        // `);
+
+        bestServers.push({ hostName: host, bestScore: moneyPerSecondPerGb });
     }
 
-    return bestName;
+    bestServers.sort((a, b) => b.bestScore - a.bestScore);
+
+    return bestServers;
 };
