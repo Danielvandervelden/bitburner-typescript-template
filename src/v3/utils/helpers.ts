@@ -367,7 +367,7 @@ export async function determineWorkerExecution(ns: NS, options: WorkerExecutionO
         Will try to copy scripts over to see if that fixes the issue...
       `);
 
-            copyNestedFilesToRootOfHost(ns, "home", "/v2/scripts/hacking/bits", [host]);
+            copyNestedFilesToRootOfHost(ns, "home", "/v3/hacking", [host]);
             return;
         }
         await ns.sleep(weakenTime + 100);

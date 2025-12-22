@@ -114,9 +114,7 @@ export async function main(ns: NS) {
 
                 ns.tprint(`Nuking ${host}!`);
                 ns.nuke(host);
-                copyNestedFilesToRootOfHost(ns, "home", "/v2/scripts/hacking/bits", [
-                    host,
-                ]);
+                copyNestedFilesToRootOfHost(ns, "home", "/v3/hacking", [host]);
             }
         });
 

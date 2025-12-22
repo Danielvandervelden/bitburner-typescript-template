@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { runScriptIfNotAlreadyRunning } from "/v2/utils/helpers";
+import { runScriptIfNotAlreadyRunning } from "/v3/utils/helpers";
 import { ASSIGN_JOBS_LOOP, RECRUIT_GANGMEMBER_WORKER } from "./constants";
 
 export async function main(ns: NS) {

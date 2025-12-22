@@ -18,7 +18,7 @@ export const CONTROLLER = "/v3/controller.js";
 
 export const PURCHASE_SERVERS = "/v3/purchase.js";
 
-export const HACK_PERCENTAGE = 0.04;
+export const HACK_PERCENTAGE = 0.08;
 export const GROWTH_TARGET = 0.99;
 
 export const HACK_MODE: "loop" | "batch" = "batch";

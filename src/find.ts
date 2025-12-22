@@ -1,43 +1,37 @@
 import { NS } from "@ns";
 
 export async function main(ns: NS) {
-    const targetHost = ns.args[0] || "home";
-    const hostTree = {};
+    const target = ns.args[0] as string;
+    const path = findPath(ns, "home", target);
 
-    function getAttachedHosts(server: string) {
-        const attachedHosts = ns.scan(server);
-
-        /** Return attached hosts without home */
-        return attachedHosts.filter(
-            (server) => server !== "home" && !server.startsWith("serb0r-")
-        );
+    if (path) {
+        ns.tprint(path.join(" > "));
+    } else {
+        ns.tprint(`Could not find path to ${target}`);
     }
+}
 
-    async function doLoopAndUpdateHostTree(
-        server: string,
-        parent: string,
-        objectToAttachTo: Record<string, any>
-    ) {
-        const children = getAttachedHosts(server).filter((server) => server !== parent);
+function findPath(ns: NS, start: string, target: string): string[] | null {
+    const visited = new Set<string>();
+    const queue: string[][] = [[start]];
 
-        for (const child of children) {
-            objectToAttachTo[child] = {};
-            await doLoopAndUpdateHostTree(child, server, objectToAttachTo[child]);
+    while (queue.length > 0) {
+        const path = queue.shift()!;
+        const current = path[path.length - 1];
+
+        if (current === target) {
+            return path;
+        }
+
+        if (visited.has(current)) continue;
+        visited.add(current);
+
+        for (const neighbor of ns.scan(current)) {
+            if (!visited.has(neighbor)) {
+                queue.push([...path, neighbor]);
+            }
         }
     }
 
-    function printHostTreeObject(object: Record<string, any>, depth = 0, prefix = "") {
-        const keys = Object.keys(object);
-        keys.forEach((host, index) => {
-            const isLast = index === keys.length - 1;
-            const branch = isLast ? "└─" : "├─";
-            const connector = isLast ? "  " : "| ";
-
-            ns.tprint(prefix + branch + host);
-            printHostTreeObject(object[host], depth + 1, prefix + connector);
-        });
-    }
-
-    await doLoopAndUpdateHostTree(targetHost.toString(), "", hostTree);
-    printHostTreeObject(hostTree);
+    return null;
 }

@@ -213,15 +213,29 @@ function prepareBatch(ns: NS, targetServer: string, allServers: string[]) {
     }
 
     for (const p of plan) {
-        const pid = ns.exec(p.script, p.host, p.threads, ...p.args);
+        const freeNow =
+            ns.getServerMaxRam(p.host) -
+            ns.getServerUsedRam(p.host) -
+            (p.host === "home" ? HOME_RAM_RESERVE : 0);
+
+        const cost = ns.getScriptRam(p.script, p.host);
+        const maxThreadsNow = Math.floor(freeNow / cost);
+
+        if (maxThreadsNow <= 0) continue;
+
+        const threads = Math.min(p.threads, maxThreadsNow);
+        const pid = ns.exec(p.script, p.host, threads, ...p.args);
+
         if (pid === 0) {
-            ns.tprint(`Failed exec ${p.script} on ${p.host} (${p.threads} threads)`);
+            ns.tprint(
+                `Still failed exec ${p.script} on ${p.host} (${threads} threads) freeNow=${freeNow}`
+            );
         }
     }
 
-    ns.tprint(
-        `Launched batch on ${targetServer}: H=${threads.hackThreads} W1=${threads.weaken1Threads} G=${threads.growThreads} W2=${threads.weaken2Threads}`
-    );
+    // ns.tprint(
+    //     `Launched batch on ${targetServer}: H=${threads.hackThreads} W1=${threads.weaken1Threads} G=${threads.growThreads} W2=${threads.weaken2Threads}`
+    // );
 }
 
 function calculateTotalBatchThreads(
