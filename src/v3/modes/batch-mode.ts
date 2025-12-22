@@ -5,9 +5,12 @@ import {
     getMostProfitableServersToHack,
 } from "../utils/helpers";
 import {
+    BATCH_SPACING,
     GROW_SCRIPT,
     GROW_SCRIPT_NAME,
     GROWTH_TARGET,
+    HACK_SCRIPT_NAME,
+    INTERNAL_BATCH_SPACING,
     WEAKEN_SCRIPT,
     WEAKEN_SCRIPT_NAME,
 } from "../utils/constants";
@@ -98,10 +101,90 @@ export async function main(ns: NS) {
             Current security: ${ns.getServerSecurityLevel(mostProfitableServerToHack)}
           `
         );
-        return;
-        // await ns.sleep(200);
-        // continue;
+
+        prepareBatch(ns, mostProfitableServerToHack, allServers);
+        await ns.sleep(BATCH_SPACING);
+        continue;
     }
+}
+
+function prepareBatch(ns: NS, targetServer: string, allServers: string[]) {
+    const weakenTime = ns.getWeakenTime(targetServer);
+    const growthTime = ns.getGrowTime(targetServer);
+    const hackTime = ns.getHackTime(targetServer);
+
+    const hackDelay = weakenTime - hackTime;
+    const growDelay = weakenTime - growthTime;
+
+    let weakenToStart = 2;
+    let growToStart = 1;
+    let hackToStart = 1;
+
+    const functionExecutions = [];
+
+    for (const server of allServers) {
+        const weakenRamCost = ns.getScriptRam(WEAKEN_SCRIPT_NAME);
+        const growRamCost = ns.getScriptRam(GROW_SCRIPT_NAME);
+        const hackRamCost = ns.getScriptRam(HACK_SCRIPT_NAME);
+
+        let ramAvailableOnServer = getRamAvailableOnServer(ns, server);
+
+        if (weakenToStart > 0) {
+            if (ramAvailableOnServer > weakenRamCost * 2) {
+                functionExecutions.push(
+                    ns.exec.bind(null, WEAKEN_SCRIPT_NAME, server, 2, targetServer)
+                );
+                ramAvailableOnServer = ramAvailableOnServer - weakenRamCost * 2;
+                weakenToStart = weakenToStart - 2;
+            } else if (weakenToStart > 0 && ramAvailableOnServer > weakenRamCost) {
+                functionExecutions.push(
+                    ns.exec.bind(null, WEAKEN_SCRIPT_NAME, server, 1, targetServer)
+                );
+                ramAvailableOnServer = ramAvailableOnServer - weakenRamCost;
+                weakenToStart = weakenToStart - 1;
+            }
+        }
+
+        if (growToStart > 0 && ramAvailableOnServer > growRamCost) {
+            functionExecutions.push(
+                ns.exec.bind(
+                    null,
+                    GROW_SCRIPT_NAME,
+                    server,
+                    1,
+                    targetServer,
+                    growDelay - INTERNAL_BATCH_SPACING
+                )
+            );
+            ramAvailableOnServer = ramAvailableOnServer - growRamCost;
+            growToStart = growToStart - 1;
+        }
+
+        if (hackToStart > 0 && ramAvailableOnServer > hackRamCost) {
+            functionExecutions.push(
+                ns.exec.bind(
+                    null,
+                    HACK_SCRIPT_NAME,
+                    server,
+                    1,
+                    targetServer,
+                    hackDelay - INTERNAL_BATCH_SPACING * 2
+                )
+            );
+            ramAvailableOnServer = ramAvailableOnServer - hackRamCost;
+            hackToStart = hackToStart - 1;
+        }
+    }
+
+    if (functionExecutions.length === 4) {
+        functionExecutions.forEach((func) => {
+            func();
+        });
+    } else {
+        ns.tprint(`Couldn't launch a full batch, will continue next iteration`);
+    }
+
+    return;
 }
 
 function weakenSecurity(ns: NS, targetServer: string, allServersAvailable: string[]) {

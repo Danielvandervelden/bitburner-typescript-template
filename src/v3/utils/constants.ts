@@ -22,3 +22,5 @@ export const HACK_PERCENTAGE = 0.07;
 export const GROWTH_TARGET = 0.96;
 
 export const HACK_MODE: "loop" | "batch" = "batch";
+export const BATCH_SPACING = 100;
+export const INTERNAL_BATCH_SPACING = 50;
