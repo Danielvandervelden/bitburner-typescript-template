@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { GROWTH_TARGET } from "../utils/constants";
+import { GROWTH_TARGET, HOME_RAM_RESERVE } from "../utils/constants";
 
 export function isTargetPrepped(
     ns: NS,
@@ -38,8 +38,10 @@ export function isTargetPrepped(
 export function getCombinedServerRam(ns: NS, allServers: string[]) {
     return allServers.reduce((prevTotalRam, server) => {
         if (ns.serverExists(server)) {
+            const free = ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
+            // Reserve RAM on home for orchestration scripts
             const serverRamAvailable =
-                ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
+                server === "home" ? Math.max(0, free - HOME_RAM_RESERVE) : free;
 
             return prevTotalRam + serverRamAvailable;
         }
@@ -49,12 +51,14 @@ export function getCombinedServerRam(ns: NS, allServers: string[]) {
 }
 
 export function serverHasRamAvailable(ns: NS, server: string, amountOfRam: number) {
+    const free = ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
     const totalAvailableRamOfServer =
-        ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
+        server === "home" ? Math.max(0, free - HOME_RAM_RESERVE) : free;
 
     return totalAvailableRamOfServer >= amountOfRam;
 }
 
 export function getRamAvailableOnServer(ns: NS, server: string) {
-    return ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
+    const free = ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
+    return server === "home" ? Math.max(0, free - HOME_RAM_RESERVE) : free;
 }

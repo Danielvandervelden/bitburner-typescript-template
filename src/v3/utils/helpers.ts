@@ -275,7 +275,6 @@ export function copyNestedFilesToRootOfHost(
                 );
             }
         }
-        ns.rm(flatFileName);
     }
 }
 

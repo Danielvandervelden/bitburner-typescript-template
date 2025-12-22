@@ -4,7 +4,7 @@ import { copyNestedFilesToRootOfHost } from "./utils/helpers";
 /** @param {NS} ns */
 export async function main(ns: NS) {
     const size = 4;
-    const homeMoneyFactorBeforeBuyingUpgrade = 2;
+    const homeMoneyFactorBeforeBuyingUpgrade = 3;
 
     while (true) {
         const purchasedServers = ns.getPurchasedServers();

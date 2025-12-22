@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { runScriptIfNotAlreadyRunning } from "./v2/utils/helpers";
+import { runScriptIfNotAlreadyRunning } from "./v3/utils/helpers";
 
 export async function main(ns: NS) {
     runScriptIfNotAlreadyRunning(ns, "v3/main.js", "home");

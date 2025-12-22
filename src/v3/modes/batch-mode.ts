@@ -10,9 +10,13 @@ import {
     GROW_SCRIPT_NAME,
     GROWTH_TARGET,
     HACK_SCRIPT_NAME,
+    HACK_PERCENTAGE,
     INTERNAL_BATCH_SPACING,
     WEAKEN_SCRIPT,
     WEAKEN_SCRIPT_NAME,
+    HACK_SCRIPT,
+    GROW_SEC_INCREASE_PER_THREAD,
+    HOME_RAM_RESERVE,
 } from "../utils/constants";
 import {
     getCombinedServerRam,
@@ -45,10 +49,11 @@ export async function main(ns: NS) {
             (server) =>
                 ns.getServerMaxRam(server) >=
                     ns.getScriptRam(WEAKEN_SCRIPT_NAME, server) &&
-                server !== mostProfitableServerToHack &&
-                server !== "home"
+                server !== mostProfitableServerToHack
         );
-        const allServers = [...new Set([...purchasedServers, ...filteredNukedServers])];
+        const allServers = [
+            ...new Set([...purchasedServers, ...filteredNukedServers, "home"]),
+        ];
 
         if (!mostProfitableServerToHack) {
             await ns.sleep(5000);
@@ -66,11 +71,6 @@ export async function main(ns: NS) {
                 allServers
             );
 
-            /**
-             * Arbitrary 10GB value, but if we do have more than 10GB available,
-             * we could already start with some additional grow & weaken threads.
-             * Would be a waste not to use them this iteration
-             * */
             const weakenScriptRamCost = ns.getScriptRam(WEAKEN_SCRIPT);
             const growScriptRamCost = ns.getScriptRam(GROW_SCRIPT);
 
@@ -91,16 +91,16 @@ export async function main(ns: NS) {
         }
 
         /** READY TO HACK */
-        ns.tprint(
-            `SERVER: ${mostProfitableServerToHack} has been completely prepped! We can now continue to batching!
-            
-            Maximum money: ${ns.getServerMaxMoney(mostProfitableServerToHack)}
-            Current money; ${ns.getServerMoneyAvailable(mostProfitableServerToHack)}
+        // ns.tprint(
+        //     `SERVER: ${mostProfitableServerToHack} has been completely prepped! We can now continue to batching!
 
-            Minimum security: ${ns.getServerMinSecurityLevel(mostProfitableServerToHack)}
-            Current security: ${ns.getServerSecurityLevel(mostProfitableServerToHack)}
-          `
-        );
+        //     Maximum money: ${ns.getServerMaxMoney(mostProfitableServerToHack)}
+        //     Current money; ${ns.getServerMoneyAvailable(mostProfitableServerToHack)}
+
+        //     Minimum security: ${ns.getServerMinSecurityLevel(mostProfitableServerToHack)}
+        //     Current security: ${ns.getServerSecurityLevel(mostProfitableServerToHack)}
+        //   `
+        // );
 
         prepareBatch(ns, mostProfitableServerToHack, allServers);
         await ns.sleep(BATCH_SPACING);
@@ -108,83 +108,200 @@ export async function main(ns: NS) {
     }
 }
 
+type ExecPlanItem = {
+    script: string;
+    host: string;
+    threads: number;
+    args: (string | number)[];
+};
+
 function prepareBatch(ns: NS, targetServer: string, allServers: string[]) {
     const weakenTime = ns.getWeakenTime(targetServer);
     const growthTime = ns.getGrowTime(targetServer);
-    const hackTime = ns.getHackTime(targetServer);
+    const hackingTime = ns.getHackTime(targetServer);
 
-    const hackDelay = weakenTime - hackTime;
-    const growDelay = weakenTime - growthTime;
+    const internalSpacing = INTERNAL_BATCH_SPACING;
 
-    let weakenToStart = 2;
-    let growToStart = 1;
-    let hackToStart = 1;
+    const weaken2Delay = 0;
+    const growDelay = Math.max(0, weakenTime - growthTime - 1 * internalSpacing);
+    const weaken1Delay = Math.max(0, 2 * internalSpacing);
+    const hackingDelay = Math.max(0, weakenTime - hackingTime - 3 * internalSpacing);
 
-    const functionExecutions = [];
+    const moneyWantToSteal = ns.getServerMaxMoney(targetServer) * HACK_PERCENTAGE;
+    const hackThreadsWanted = Math.ceil(
+        ns.hackAnalyzeThreads(targetServer, moneyWantToSteal)
+    );
 
-    for (const server of allServers) {
-        const weakenRamCost = ns.getScriptRam(WEAKEN_SCRIPT_NAME);
-        const growRamCost = ns.getScriptRam(GROW_SCRIPT_NAME);
-        const hackRamCost = ns.getScriptRam(HACK_SCRIPT_NAME);
+    const threads = calculateTotalBatchThreads(
+        ns,
+        targetServer,
+        hackThreadsWanted,
+        allServers
+    );
+    if (threads.hackThreads <= 0) {
+        ns.tprint(`No viable batch for ${targetServer} with current RAM.`);
+        return;
+    }
 
-        let ramAvailableOnServer = getRamAvailableOnServer(ns, server);
+    const remaining = new Map<string, number>();
+    for (const host of allServers) {
+        const free = ns.getServerMaxRam(host) - ns.getServerUsedRam(host);
+        remaining.set(
+            host,
+            host === "home" ? Math.max(0, free - HOME_RAM_RESERVE) : free
+        );
+    }
 
-        if (weakenToStart > 0) {
-            if (ramAvailableOnServer > weakenRamCost * 2) {
-                functionExecutions.push(
-                    ns.exec.bind(null, WEAKEN_SCRIPT_NAME, server, 2, targetServer)
-                );
-                ramAvailableOnServer = ramAvailableOnServer - weakenRamCost * 2;
-                weakenToStart = weakenToStart - 2;
-            } else if (weakenToStart > 0 && ramAvailableOnServer > weakenRamCost) {
-                functionExecutions.push(
-                    ns.exec.bind(null, WEAKEN_SCRIPT_NAME, server, 1, targetServer)
-                );
-                ramAvailableOnServer = ramAvailableOnServer - weakenRamCost;
-                weakenToStart = weakenToStart - 1;
-            }
+    const ramCost = {
+        hack: ns.getScriptRam(HACK_SCRIPT),
+        grow: ns.getScriptRam(GROW_SCRIPT),
+        weaken: ns.getScriptRam(WEAKEN_SCRIPT),
+    };
+
+    const plan: ExecPlanItem[] = [];
+
+    function allocate(
+        script: string,
+        costPerThread: number,
+        threadsNeeded: number,
+        args: (string | number)[]
+    ): number {
+        let left = threadsNeeded;
+
+        for (const host of allServers) {
+            if (left <= 0) break;
+
+            const free = remaining.get(host) ?? 0;
+            const fit = Math.floor(free / costPerThread);
+            if (fit <= 0) continue;
+
+            const use = Math.min(fit, left);
+
+            plan.push({ script, host, threads: use, args });
+
+            remaining.set(host, free - use * costPerThread);
+            left -= use;
         }
 
-        if (growToStart > 0 && ramAvailableOnServer > growRamCost) {
-            functionExecutions.push(
-                ns.exec.bind(
-                    null,
-                    GROW_SCRIPT_NAME,
-                    server,
-                    1,
-                    targetServer,
-                    growDelay - INTERNAL_BATCH_SPACING
-                )
-            );
-            ramAvailableOnServer = ramAvailableOnServer - growRamCost;
-            growToStart = growToStart - 1;
-        }
+        return left;
+    }
 
-        if (hackToStart > 0 && ramAvailableOnServer > hackRamCost) {
-            functionExecutions.push(
-                ns.exec.bind(
-                    null,
-                    HACK_SCRIPT_NAME,
-                    server,
-                    1,
-                    targetServer,
-                    hackDelay - INTERNAL_BATCH_SPACING * 2
-                )
-            );
-            ramAvailableOnServer = ramAvailableOnServer - hackRamCost;
-            hackToStart = hackToStart - 1;
+    const failW2 = allocate(WEAKEN_SCRIPT_NAME, ramCost.weaken, threads.weaken2Threads, [
+        targetServer,
+        weaken2Delay,
+        "w2",
+    ]);
+    const failG = allocate(GROW_SCRIPT_NAME, ramCost.grow, threads.growThreads, [
+        targetServer,
+        growDelay,
+        "g",
+    ]);
+    const failW1 = allocate(WEAKEN_SCRIPT_NAME, ramCost.weaken, threads.weaken1Threads, [
+        targetServer,
+        weaken1Delay,
+        "w1",
+    ]);
+    const failH = allocate(HACK_SCRIPT_NAME, ramCost.hack, threads.hackThreads, [
+        targetServer,
+        hackingDelay,
+        "h",
+    ]);
+
+    const failed = failW2 + failG + failW1 + failH;
+    if (failed > 0) {
+        return;
+    }
+
+    for (const p of plan) {
+        const pid = ns.exec(p.script, p.host, p.threads, ...p.args);
+        if (pid === 0) {
+            ns.tprint(`Failed exec ${p.script} on ${p.host} (${p.threads} threads)`);
         }
     }
 
-    if (functionExecutions.length === 4) {
-        functionExecutions.forEach((func) => {
-            func();
-        });
-    } else {
-        ns.tprint(`Couldn't launch a full batch, will continue next iteration`);
+    ns.tprint(
+        `Launched batch on ${targetServer}: H=${threads.hackThreads} W1=${threads.weaken1Threads} G=${threads.growThreads} W2=${threads.weaken2Threads}`
+    );
+}
+
+function calculateTotalBatchThreads(
+    ns: NS,
+    targetServer: string,
+    hackThreads: number,
+    allServers: string[]
+): {
+    hackThreads: number;
+    weaken1Threads: number;
+    growThreads: number;
+    weaken2Threads: number;
+} {
+    if (hackThreads < 1) {
+        ns.tprint(`Batch impossible, not enough RAM available to do anything`);
+        return { hackThreads: 0, weaken1Threads: 0, growThreads: 0, weaken2Threads: 0 };
     }
 
-    return;
+    const totalRamAvailable = getCombinedServerRam(ns, allServers);
+
+    const weakenRamCost = ns.getScriptRam(WEAKEN_SCRIPT);
+    const growRamCost = ns.getScriptRam(GROW_SCRIPT);
+    const hackRamCost = ns.getScriptRam(HACK_SCRIPT);
+
+    const weakenPerThread = ns.weakenAnalyze(1);
+    const totalHackSecurityIncrease = ns.hackAnalyzeSecurity(hackThreads, targetServer);
+
+    const weaken1Threads = Math.ceil(totalHackSecurityIncrease / weakenPerThread);
+
+    const maxMoney = ns.getServerMaxMoney(targetServer);
+    const stolenFraction = ns.hackAnalyze(targetServer) * hackThreads;
+    const moneyStolenUsingHackThreads = maxMoney * stolenFraction;
+
+    const growthFactor =
+        ns.getServerMaxMoney(targetServer) /
+        (ns.getServerMaxMoney(targetServer) - moneyStolenUsingHackThreads);
+
+    const growThreads = Math.ceil(ns.growthAnalyze(targetServer, growthFactor));
+    const totalGrowSecurityIncrease = GROW_SEC_INCREASE_PER_THREAD * growThreads;
+    const weaken2Threads = Math.ceil(totalGrowSecurityIncrease / weakenPerThread);
+
+    const totalRamCostForBatch =
+        hackThreads * hackRamCost +
+        weaken1Threads * weakenRamCost +
+        growThreads * growRamCost +
+        weaken2Threads * weakenRamCost;
+
+    if (totalRamAvailable < totalRamCostForBatch) {
+        return calculateTotalBatchThreads(ns, targetServer, hackThreads - 1, allServers);
+    }
+
+    // ns.tprint(`
+    //   Batch threads prepared. We want to steal ${moneyStolenUsingHackThreads} from ${targetServer} (Maximum money is: ${ns.getServerMaxMoney(
+    //     targetServer
+    // )})
+
+    // Total RAM available accross all servers: ${totalRamAvailable}
+    // RAM cost for batch: ${totalRamCostForBatch}
+
+    // Total security increase for hack: ${totalHackSecurityIncrease}
+
+    // Growth threads float: ${growThreadsFloat}
+    // Grow threads int: ${growThreads}
+    // Security increase per grow: ${GROW_SEC_INCREASE_PER_THREAD}
+    // Total security increase for grow: ${totalGrowSecurityIncrease}
+    // Weaken per thread: ${weakenPerThread}
+
+    // Threads:
+    //   H: ${hackThreads}
+    //   W1: ${weaken1Threads}
+    //   G: ${growThreads}
+    //   W2: ${weaken2Threads}
+    // `);
+
+    return {
+        hackThreads,
+        weaken1Threads,
+        growThreads,
+        weaken2Threads,
+    };
 }
 
 function weakenSecurity(ns: NS, targetServer: string, allServersAvailable: string[]) {
@@ -196,14 +313,14 @@ function weakenSecurity(ns: NS, targetServer: string, allServersAvailable: strin
             weakenAmountPerThreads
     );
 
-    ns.tprint(`
-      Security is too high now, we have to weaken!
-      Current target security: ${currentTargetServerSecurityLevel}
-      Minimum target security: ${minimumTargetServerSecurityLevel}
+    // ns.tprint(`
+    //   Security is too high now, we have to weaken!
+    //   Current target security: ${currentTargetServerSecurityLevel}
+    //   Minimum target security: ${minimumTargetServerSecurityLevel}
 
-      Weaken per thread: ${weakenAmountPerThreads}
-      Total weaken threads needed: ${weakenThreadsNeeded}
-    `);
+    //   Weaken per thread: ${weakenAmountPerThreads}
+    //   Total weaken threads needed: ${weakenThreadsNeeded}
+    // `);
 
     for (const server of allServersAvailable) {
         if (weakenThreadsNeeded < 1) {
@@ -273,14 +390,14 @@ async function growServer(ns: NS, targetServer: string, allServers: string[]) {
             continue;
         }
 
-        ns.tprint(`
-          Money is not at max yet, time to grow!
-          Current target money: ${currentMoney}
-          Max target money: ${serverMaxMoney}
-    
-          Growth factor: ${growthFactor}
-          Total grow threads needed: ${growThreadsNeeded}
-        `);
+        // ns.tprint(`
+        //   Money is not at max yet, time to grow!
+        //   Current target money: ${currentMoney}
+        //   Max target money: ${serverMaxMoney}
+
+        //   Growth factor: ${growthFactor}
+        //   Total grow threads needed: ${growThreadsNeeded}
+        // `);
 
         if (growThreadsNeeded < 1) {
             return;
@@ -385,23 +502,22 @@ function findMaximumGrowAndWeakenThreads(
         weakenThreads: Math.floor(weakenThreads),
     };
 
-    ns.tprint(`
-      Grow/weaken threads info
-      ======
-      Single grow security increase: ${singleGrowSecurityIncrease}
-      Single weaken security decrease: ${singleWeakenSecurityDecrease}
-      
-      Total security increase by grow: ${growThreads} * ${singleGrowSecurityIncrease} = ${totalSecurityInceaseByGrow}
-      Total weaken threads to offset: ${totalSecurityInceaseByGrow} / ${singleWeakenSecurityDecrease} (ceiled)
+    // ns.tprint(`
+    //   Grow/weaken threads info
+    //   ======
+    //   Single grow security increase: ${singleGrowSecurityIncrease}
+    //   Single weaken security decrease: ${singleWeakenSecurityDecrease}
 
+    //   Total security increase by grow: ${growThreads} * ${singleGrowSecurityIncrease} = ${totalSecurityInceaseByGrow}
+    //   Total weaken threads to offset: ${totalSecurityInceaseByGrow} / ${singleWeakenSecurityDecrease} (ceiled)
 
-      Free RAM on server: ${freeRamOnServer}
-      Grow ram needed: ${growRamNeeded}
-      Weaken ram needed: ${weakenRamNeeded}
-      Total ram needed: ${totalRamNeeded}
+    //   Free RAM on server: ${freeRamOnServer}
+    //   Grow ram needed: ${growRamNeeded}
+    //   Weaken ram needed: ${weakenRamNeeded}
+    //   Total ram needed: ${totalRamNeeded}
 
-      Eventual result: ${JSON.stringify(result, null, 2)}
-    `);
+    //   Eventual result: ${JSON.stringify(result, null, 2)}
+    // `);
 
     return result;
 }

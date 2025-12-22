@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { copyNestedFilesToRootOfHost, getAllAvailableServers } from "/v2/utils/helpers";
+import { copyNestedFilesToRootOfHost, getAllAvailableServers } from "/v3/utils/helpers";
 
 type HackFunctions =
     | NS["brutessh"]
