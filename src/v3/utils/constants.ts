@@ -18,12 +18,12 @@ export const CONTROLLER = "/v3/controller.js";
 
 export const PURCHASE_SERVERS = "/v3/purchase.js";
 
-export const HACK_PERCENTAGE = 0.08;
-export const GROWTH_TARGET = 0.99;
+export const HACK_PERCENTAGE = 0.02;
+export const GROWTH_TARGET = 0.98;
 
 export const HACK_MODE: "loop" | "batch" = "batch";
-export const BATCH_SPACING = 200;
-export const INTERNAL_BATCH_SPACING = 50;
+export const BATCH_SPACING = 50;
+export const INTERNAL_BATCH_SPACING = 30;
 export const GROW_SEC_INCREASE_PER_THREAD = 0.004;
 
 export const HOME_RAM_RESERVE = 32;

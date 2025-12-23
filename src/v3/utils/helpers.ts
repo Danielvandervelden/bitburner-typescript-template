@@ -432,10 +432,9 @@ export const getMostProfitableServersToHack = (
 ): BestServer[] => {
     const targets = getAllAvailableServersWithRootAccess(ns).filter((host) => {
         const maxMoney = ns.getServerMaxMoney(host);
-        const chance = ns.hackAnalyzeChance(host);
         const reqLvl = ns.getServerRequiredHackingLevel(host);
 
-        return maxMoney > 0 && chance > 0.9 && reqLvl < ns.getHackingLevel();
+        return maxMoney > 0 && reqLvl <= ns.getHackingLevel();
     });
 
     if (!targets.length) {
@@ -521,6 +520,12 @@ export const getMostProfitableServersToHack = (
     }
 
     bestServers.sort((a, b) => b.bestScore - a.bestScore);
+
+    // ns.tprint(`
+    //   Best servers to hack in order:
+
+    //   ${JSON.stringify(bestServers, null, 2)}
+    // `);
 
     return bestServers;
 };
