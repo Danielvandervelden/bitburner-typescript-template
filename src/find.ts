@@ -6,6 +6,10 @@ export async function main(ns: NS) {
 
     if (path) {
         ns.tprint(path.join(" > "));
+        for (const server of path) {
+            ns.singularity.connect(server);
+            await ns.sleep(100);
+        }
     } else {
         ns.tprint(`Could not find path to ${target}`);
     }

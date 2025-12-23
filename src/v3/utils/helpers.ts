@@ -2,6 +2,7 @@ import { NS } from "@ns";
 import {
     GROW_SCRIPT,
     GROW_SCRIPT_NAME,
+    GROW_SEC_INCREASE_PER_THREAD,
     HACK_PERCENTAGE,
     HACK_SCRIPT,
     HACK_SCRIPT_NAME,
@@ -473,8 +474,7 @@ export const getMostProfitableServersToHack = (
         const growThreads = Math.max(0, Math.ceil(ns.growthAnalyze(host, growthFactor)));
 
         const securityIncrease =
-            ns.hackAnalyzeSecurity(hackThreads, host) +
-            ns.growthAnalyzeSecurity(growThreads, host);
+            ns.hackAnalyzeSecurity(hackThreads, host) + GROW_SEC_INCREASE_PER_THREAD;
 
         const weakenThreads = Math.max(0, Math.ceil(securityIncrease / weakenPerThread));
 
