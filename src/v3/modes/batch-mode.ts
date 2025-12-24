@@ -1,9 +1,5 @@
 import { NS } from "@ns";
-import {
-    copyNestedFilesToRootOfHost,
-    getAllAvailableServersWithRootAccess,
-    getMostProfitableServersToHack,
-} from "../utils/helpers";
+import { copyNestedFilesToRootOfHost, createRandomIdentifier } from "../utils/helpers";
 import {
     BATCH_SPACING,
     GROW_SCRIPT,
@@ -19,21 +15,21 @@ import {
     HOME_RAM_RESERVE,
 } from "../utils/constants";
 import {
+    getBatchableServers,
     getCombinedServerRam,
     getRamAvailableOnServer,
     isTargetPrepped,
     serverHasRamAvailable,
 } from "./batch-mode-helpers";
 
-const forcedTarget: string | undefined = "the-hub";
+const forcedTarget: string | undefined = undefined;
 
 export async function main(ns: NS) {
     while (true) {
-        const purchasedServers = ns.getPurchasedServers();
-        const nukedServers = getAllAvailableServersWithRootAccess(ns);
-        const mostProfitableServersToHack = getMostProfitableServersToHack(ns, "loop");
-        const mostProfitableServerToHack =
-            forcedTarget ?? mostProfitableServersToHack?.[0]?.hostName;
+        const { allServers, mostProfitableServerToHack } = getBatchableServers(
+            ns,
+            forcedTarget
+        );
 
         // ns.tprint(mostProfitableServersToHack);
 
@@ -47,15 +43,6 @@ export async function main(ns: NS) {
             );
             return;
         }
-        const filteredNukedServers = nukedServers.filter(
-            (server) =>
-                ns.getServerMaxRam(server) >=
-                    ns.getScriptRam(WEAKEN_SCRIPT_NAME, server) &&
-                server !== mostProfitableServerToHack
-        );
-        const allServers = [
-            ...new Set([...purchasedServers, ...filteredNukedServers, "home"]),
-        ];
 
         if (!mostProfitableServerToHack) {
             await ns.sleep(5000);
@@ -224,8 +211,10 @@ function prepareBatch(ns: NS, targetServer: string, allServers: string[]) {
 
         if (maxThreadsNow <= 0) continue;
 
+        const batchId = createRandomIdentifier(4);
+
         const threads = Math.min(p.threads, maxThreadsNow);
-        const pid = ns.exec(p.script, p.host, threads, ...p.args);
+        const pid = ns.exec(p.script, p.host, threads, ...p.args, batchId);
 
         if (pid === 0) {
             ns.tprint(
@@ -410,7 +399,6 @@ async function growServer(ns: NS, targetServer: string, allServers: string[]) {
         );
 
         if (possibleThreadsToRun < 1) {
-            ns.tprint(`Too little threads for ${server}`);
             continue;
         }
 

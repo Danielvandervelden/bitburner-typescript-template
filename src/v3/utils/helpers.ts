@@ -422,9 +422,23 @@ export async function determineWorkerExecution(ns: NS, options: WorkerExecutionO
 }
 
 type ProfitMode = "loop" | "batch";
-interface BestServer {
+
+export interface BestServer {
     hostName: string;
     bestScore: number;
+    maxMoney: number;
+    currentMoney: number;
+    hackChance: number;
+    growthFactor: number;
+    hackThreads: number;
+    growThreads: number;
+    securityIncrease: number;
+    weakenThreadsNeeded: number;
+    ramCostPerCycle: number;
+    weakenTimeInSeconds: number;
+    cycleTimeInSeconds: number;
+    expectedMoneyPerCycle: number;
+    moneyPerSecondPerGb: number;
 }
 
 export const getMostProfitableServersToHack = (
@@ -463,8 +477,8 @@ export const getMostProfitableServersToHack = (
         // Growth factor basis
         const growthFactor =
             mode === "batch"
-                ? 1 / (1 - HACK_PERCENTAGE) // regrow after hacking HACK_PERCENTAGE from full
-                : Math.max(1, maxMoney / Math.max(currentMoney, 1)); // restore from current -> max
+                ? 1 / (1 - HACK_PERCENTAGE)
+                : Math.max(1, maxMoney / Math.max(currentMoney, 1));
 
         // Threads
         const hackFracPerThread = ns.hackAnalyze(host);
@@ -516,7 +530,23 @@ export const getMostProfitableServersToHack = (
         //   RAM/cycle: ${ramCostPerCycle}GB
         // `);
 
-        bestServers.push({ hostName: host, bestScore: moneyPerSecondPerGb });
+        bestServers.push({
+            hostName: host,
+            bestScore: moneyPerSecondPerGb,
+            currentMoney,
+            cycleTimeInSeconds: cycleTimeMs / 1000,
+            expectedMoneyPerCycle,
+            growthFactor,
+            growThreads,
+            hackChance,
+            hackThreads,
+            maxMoney,
+            moneyPerSecondPerGb,
+            ramCostPerCycle,
+            securityIncrease,
+            weakenThreadsNeeded: weakenThreads,
+            weakenTimeInSeconds: weakenTime / 1000,
+        });
     }
 
     bestServers.sort((a, b) => b.bestScore - a.bestScore);

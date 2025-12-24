@@ -11,16 +11,15 @@ export const createReactElement = async (
     ElementToRender: React.ComponentType<ElementProps>,
     windowId: string
 ) => {
-    // ns.disableLog("ALL");
-
-    console.log("Inside create react element");
-    console.log(ElementToRender);
-    console.log(windowId);
+    ns.disableLog("ALL");
 
     const doc = eval("document") as Document;
     const hostWindow = doc.createElement("div");
 
     hostWindow.id = windowId;
+
+    hostWindow.style.display = "flex";
+    hostWindow.style.height = "100%";
 
     doc.body.querySelector("#root")?.appendChild(hostWindow);
 

@@ -26,4 +26,4 @@ export const BATCH_SPACING = 30;
 export const INTERNAL_BATCH_SPACING = 15;
 export const GROW_SEC_INCREASE_PER_THREAD = 0.004;
 
-export const HOME_RAM_RESERVE = 32;
+export const HOME_RAM_RESERVE = 64;

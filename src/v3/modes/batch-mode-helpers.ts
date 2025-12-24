@@ -1,5 +1,9 @@
 import { NS } from "@ns";
-import { GROWTH_TARGET, HOME_RAM_RESERVE } from "../utils/constants";
+import { GROWTH_TARGET, HOME_RAM_RESERVE, WEAKEN_SCRIPT_NAME } from "../utils/constants";
+import {
+    getAllAvailableServersWithRootAccess,
+    getMostProfitableServersToHack,
+} from "../utils/helpers";
 
 export function isTargetPrepped(
     ns: NS,
@@ -61,4 +65,23 @@ export function serverHasRamAvailable(ns: NS, server: string, amountOfRam: numbe
 export function getRamAvailableOnServer(ns: NS, server: string) {
     const free = ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
     return server === "home" ? Math.max(0, free - HOME_RAM_RESERVE) : free;
+}
+
+export function getBatchableServers(ns: NS, forcedTarget?: string) {
+    const purchasedServers = ns.getPurchasedServers();
+    const nukedServers = getAllAvailableServersWithRootAccess(ns);
+    const mostProfitableServersToHack = getMostProfitableServersToHack(ns, "loop");
+    const mostProfitableServerToHack =
+        forcedTarget ?? mostProfitableServersToHack?.[0]?.hostName;
+
+    const filteredNukedServers = nukedServers.filter(
+        (server) =>
+            ns.getServerMaxRam(server) >= ns.getScriptRam(WEAKEN_SCRIPT_NAME, server) &&
+            server !== mostProfitableServerToHack
+    );
+    const allServers = [
+        ...new Set([...purchasedServers, ...filteredNukedServers, "home"]),
+    ];
+
+    return { allServers, mostProfitableServerToHack };
 }

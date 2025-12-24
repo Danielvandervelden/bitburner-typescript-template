@@ -43,6 +43,39 @@ function checkAmountOfPortsWeCanHack(ns: NS) {
     }, 0);
 }
 
+/** BFS to find path from home to target */
+function findPath(ns: NS, target: string): string[] | null {
+    const visited = new Set<string>(["home"]);
+    const queue: { server: string; path: string[] }[] = [{ server: "home", path: [] }];
+
+    while (queue.length > 0) {
+        const { server, path } = queue.shift()!;
+        const neighbors = ns.scan(server);
+
+        for (const neighbor of neighbors) {
+            if (neighbor === target) {
+                return [...path, neighbor];
+            }
+            if (!visited.has(neighbor)) {
+                visited.add(neighbor);
+                queue.push({ server: neighbor, path: [...path, neighbor] });
+            }
+        }
+    }
+    return null;
+}
+
+/** Navigate to target server via path */
+function navigateTo(ns: NS, target: string): boolean {
+    const path = findPath(ns, target);
+    if (!path) return false;
+
+    for (const hop of path) {
+        if (!ns.singularity.connect(hop)) return false;
+    }
+    return true;
+}
+
 export async function main(ns: NS) {
     while (true) {
         const hosts = getAllAvailableServers(ns);
@@ -73,37 +106,50 @@ export async function main(ns: NS) {
             }
         }
 
-        hosts.forEach((host) => {
-            /** If we already have root access, return */
-            if (ns.hasRootAccess(host)) {
-                //ns.tprint(`Trying to hack ${host}. but we already have root access`);
-                return;
+        for (const host of hosts) {
+            /** If we don't have a backdoor, make one */
+            if (
+                !ns.getServer(host).backdoorInstalled &&
+                ns.getServerRequiredHackingLevel(host) < ns.getHackingLevel() &&
+                ns.getServerNumPortsRequired(host) <= checkAmountOfPortsWeCanHack(ns) &&
+                ns.hasRootAccess(host) &&
+                host !== "home" &&
+                host !== "." &&
+                !host.startsWith("serb0r-") &&
+                !host.startsWith("storm")
+            ) {
+                if (navigateTo(ns, host)) {
+                    ns.tprint(`Installing backdoor for ${host}`);
+                    await ns.singularity.installBackdoor();
+                    ns.singularity.connect("home");
+                }
+                continue;
             }
 
-            /** If we cannot hack it because our hacking level is too low, return */
+            /** If we already have root access, skip */
+            if (ns.hasRootAccess(host)) {
+                continue;
+            }
+
+            /** If we cannot hack it because our hacking level is too low, skip */
             if (ns.getServerRequiredHackingLevel(host) > ns.getHackingLevel()) {
-                //ns.tprint(`Trying to hack ${host}, but our hacking level is too low`);
-                return;
+                continue;
             }
 
             /** Minimum ports checking */
             if (ns.getServerNumPortsRequired(host) === 0) {
                 ns.tprint(`Hacking server ${host} 0 open ports required...`);
                 ns.nuke(host);
-                return;
+                continue;
             }
 
             if (ns.getServerNumPortsRequired(host) > checkAmountOfPortsWeCanHack(ns)) {
-                //ns.tprint(`Can't hack ${host}, because it requires ${ns.getServerNumPortsRequired(host)} ports to be hacked, and we can hack only ${checkAmountOfPortsWeCanHack(ns)}`)
-                return;
+                continue;
             }
 
             if (ns.getServerNumPortsRequired(host) > 0) {
                 const portsToHack = ns.getServerNumPortsRequired(host);
                 const slicedPortsHackArray = portsHackArray(ns).slice(0, portsToHack);
-
-                //ns.tprint(`Trying to hack ${host}, it requires ${portsToHack} ports to be hacked open`);
-                //ns.tprintRaw('Using following port hacks: ' + JSON.stringify(slicedPortsHackArray))
 
                 for (const portHack of slicedPortsHackArray) {
                     if (ns.fileExists(portHack.name, "home")) {
@@ -116,7 +162,7 @@ export async function main(ns: NS) {
                 ns.nuke(host);
                 copyNestedFilesToRootOfHost(ns, "home", "/v3/hacking", [host]);
             }
-        });
+        }
 
         await ns.sleep(10000);
     }
